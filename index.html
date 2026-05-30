@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel de Reservas — Galpão 17</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f3;color:#1a1a1a;padding:1.5rem}
+.hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid #e0e0e0;flex-wrap:wrap;gap:1rem}
+.hdr h1{font-size:20px;font-weight:700}
+.hdr p{font-size:12px;color:#888;margin-top:3px}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:4px 12px;border-radius:20px;font-weight:600}
+.pill.ok{background:#e6f4ea;color:#1a7a34}.pill.err{background:#fdecea;color:#c0392b}.pill.load{background:#eee;color:#666}
+.dot{width:7px;height:7px;border-radius:50%;background:currentColor;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:1.5rem}
+.mc{background:#fff;border-radius:10px;padding:1rem 1.25rem;border:1px solid #e8e8e8}
+.mc-l{font-size:11px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+.mc-v{font-size:26px;font-weight:700}
+.mc-s{font-size:11px;color:#aaa;margin-top:2px}
+.tabs{display:flex;border-bottom:2px solid #e8e8e8;margin-bottom:1.5rem;gap:2px}
+.tab{padding:8px 18px;font-size:14px;cursor:pointer;color:#888;border:none;background:none;border-bottom:3px solid transparent;margin-bottom:-2px;font-weight:600;transition:all .15s;border-radius:6px 6px 0 0}
+.tab.on{color:#1a1a1a;border-bottom-color:#1a1a1a;background:#f0f0f0}
+.tab:hover:not(.on){color:#333;background:#f5f5f5}
+.sec{display:none}.sec.on{display:block}
+.cg{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.25rem}
+.cc{background:#fff;border-radius:12px;padding:1.25rem;border:1px solid #e8e8e8}
+.cc.full{grid-column:1/-1}
+.ct{font-size:14px;font-weight:700;margin-bottom:2px}
+.cs{font-size:12px;color:#999;margin-bottom:1rem}
+.leg{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;font-size:12px;color:#666}
+.leg span{display:flex;align-items:center;gap:5px}
+.ld{width:10px;height:10px;border-radius:3px}
+.fb{display:flex;gap:10px;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
+.fb select,.fb input{font-size:13px;padding:7px 10px;height:36px;border-radius:8px;border:1px solid #ddd;background:#fff;outline:none}
+.fb input[type=text]{flex:1;min-width:150px}
+.tw{overflow-x:auto;border-radius:12px;border:1px solid #e8e8e8;background:#fff}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:10px 14px;font-size:11px;font-weight:700;color:#888;border-bottom:1px solid #eee;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;background:#fafafa}
+td{padding:10px 14px;border-bottom:1px solid #f0f0f0;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafafa}
+.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.b0{background:#e8f2fc;color:#1a5c9a}.b1{background:#e6f4ea;color:#1a6b33}.b2{background:#fef3e2;color:#7a4d00}.b3{background:#fde8e8;color:#8b1a1a}.b4{background:#ede8fe;color:#4a2d8b}.b5{background:#e0f5f0;color:#0a5c42}
+.sconv{background:#e6f4ea;color:#1a7a34}.spend{background:#fef3e2;color:#7a4d00}.scanc{background:#fde8e8;color:#8b1a1a}
+.pbtn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;font-size:13px;cursor:pointer;background:#fff;border:1px solid #ddd;border-radius:8px;font-weight:600;transition:all .15s}
+.pbtn:hover{background:#f0f0f0}
+.pbtn.primary{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.pbtn.primary:hover{background:#333}
+.pbtn:disabled{opacity:.45;cursor:not-allowed}
+.placas-toolbar{display:flex;gap:10px;align-items:center;margin-bottom:1rem;flex-wrap:wrap;background:#fff;padding:1rem;border-radius:12px;border:1px solid #e8e8e8}
+.pg{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:1.25rem}
+.placa{background:#fff;border:2px solid #e0e0e0;border-radius:14px;padding:1.5rem;position:relative;transition:border-color .15s}
+.placa.sel{border-color:#1a1a1a}
+.placa input[type=checkbox]{position:absolute;top:1rem;right:1rem;width:18px;height:18px;cursor:pointer;accent-color:#1a1a1a}
+.placa-top{font-size:10px;font-weight:700;color:#aaa;letter-spacing:1px;text-transform:uppercase;margin-bottom:.6rem;display:flex;justify-content:space-between;padding-right:1.75rem}
+.placa-nome{font-size:20px;font-weight:800;line-height:1.2;margin-bottom:.25rem}
+.placa-modal{font-size:12px;color:#999}
+.pi{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:.875rem}
+.pib{background:#f7f7f7;border-radius:8px;padding:.5rem .875rem}
+.pil{font-size:10px;color:#999;margin-bottom:2px;text-transform:uppercase;letter-spacing:.3px}
+.piv{font-size:14px;font-weight:700}
+.empty{padding:3rem;text-align:center;color:#aaa;font-size:14px}
+.err-box{padding:1rem 1.25rem;background:#fdecea;color:#c0392b;border-radius:10px;font-size:13px;margin-bottom:1rem;border:1px solid #f5c6c6}
+.ok-box{padding:1rem 1.25rem;background:#e6f4ea;color:#1a7a34;border-radius:10px;font-size:13px;margin-bottom:1rem;border:1px solid #b7dfbf}
+.links-list a{display:block;font-size:13px;color:#1a5c9a;text-decoration:underline;margin-top:4px}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.on{display:flex}
+.modal{background:#fff;border-radius:16px;padding:2rem;max-width:440px;width:90%;text-align:center}
+.modal h2{font-size:18px;font-weight:700;margin-bottom:.5rem}
+.modal p{font-size:14px;color:#666;margin-bottom:1.25rem}
+.spinner{width:40px;height:40px;border:4px solid #eee;border-top-color:#1a1a1a;border-radius:50%;animation:spin 1s linear infinite;margin:1rem auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:640px){.cg{grid-template-columns:1fr}.cc.full{grid-column:1}body{padding:.75rem}}
+
+/* ═══ IMPRESSÃO ═══════════════════════════════════════════
+   Uma placa por página, A4 paisagem, sem nada mais na tela
+   ═══════════════════════════════════════════════════════ */
+@media print {
+  @page { size: A4 landscape; margin: 1.5cm; }
+  body { background: #fff !important; padding: 0 !important; }
+  .no-print, .hdr, .tabs, .metrics, .placas-toolbar, .modal-overlay { display: none !important; }
+  .sec { display: none !important; }
+  #area-impressao { display: block !important; }
+
+  .folha-placa {
+    width: 100%;
+    min-height: 16cm;
+    page-break-after: always;
+    break-after: page;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    text-align: center;
+    font-family: 'Segoe UI', Arial, sans-serif;
+  }
+  .folha-placa:last-child { page-break-after: avoid; break-after: avoid; }
+
+  .folha-header {
+    width: 100%;
+    text-align: center;
+    margin-bottom: .8cm;
+  }
+  .folha-header img { max-width: 14cm; max-height: 3.5cm; object-fit: contain; }
+
+  .folha-corpo {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: .4cm;
+    width: 100%;
+  }
+
+  .print-nome  { font-size: 48pt; font-weight: 900; line-height: 1.1; color: #000; }
+  .print-data  { font-size: 30pt; font-weight: 700; color: #000; }
+  .print-qtd   { font-size: 26pt; font-weight: 700; color: #000; }
+  .print-local { font-size: 26pt; font-weight: 700; color: #000; }
+  .print-aviso { font-size: 14pt; font-weight: 700; color: #000; margin-top: .5cm; }
+
+  .folha-footer {
+    width: 100%;
+    text-align: center;
+    font-size: 13pt;
+    font-weight: 700;
+    color: #000;
+    border-top: 1.5pt solid #000;
+    padding-top: .25cm;
+    margin-top: .5cm;
+  }
+}
+#area-impressao { display: none; }
+</style>
+</head>
+<body>
+
+<div class="hdr no-print">
+  <div>
+    <h1>📅 Painel de Reservas — Galpão 17</h1>
+    <p id="upd">Conectando à planilha...</p>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <span class="pill load" id="pill"><span class="dot"></span><span id="ptxt">Carregando</span></span>
+    <button class="pbtn" onclick="loadDados()">↺ Atualizar</button>
+  </div>
+</div>
+
+<div id="err"></div>
+
+<div class="metrics no-print">
+  <div class="mc"><div class="mc-l">Total de reservas</div><div class="mc-v" id="m1">—</div></div>
+  <div class="mc"><div class="mc-l">Pessoas confirmadas</div><div class="mc-v" id="m2">—</div></div>
+  <div class="mc"><div class="mc-l">Hoje</div><div class="mc-v" id="m3">—</div><div class="mc-s" id="m3s"></div></div>
+  <div class="mc"><div class="mc-l">Próxima reserva</div><div class="mc-v" id="m4" style="font-size:14px;padding-top:4px;line-height:1.4">—</div></div>
+  <div class="mc"><div class="mc-l">Locais ativos</div><div class="mc-v" id="m5">—</div></div>
+  <div class="mc"><div class="mc-l">Convertidas</div><div class="mc-v" id="m6">—</div><div class="mc-s" id="m6s"></div></div>
+</div>
+
+<div class="tabs no-print">
+  <button class="tab on" onclick="showTab('g',this)">📊 Gráficos</button>
+  <button class="tab" onclick="showTab('t',this)">📋 Tabela</button>
+  <button class="tab" onclick="showTab('p',this)">🪧 Placas</button>
+</div>
+
+<!-- GRÁFICOS -->
+<div id="s-g" class="sec on no-print">
+  <div class="cg">
+    <div class="cc full"><div class="ct">Pessoas por data de reserva</div><div class="cs">Total por dia</div><div class="leg" id="lg1"></div><div style="position:relative;width:100%;height:240px"><canvas id="c1" role="img" aria-label="Pessoas por data"></canvas></div></div>
+    <div class="cc"><div class="ct">Por local / setor</div><div class="cs">Quantidade por local</div><div class="leg" id="lg2"></div><div style="position:relative;width:100%;height:220px"><canvas id="c2" role="img" aria-label="Por local"></canvas></div></div>
+    <div class="cc"><div class="ct">Por semana</div><div class="cs">Pessoas por semana</div><div class="leg" id="lg3"></div><div style="position:relative;width:100%;height:220px"><canvas id="c3" role="img" aria-label="Por semana"></canvas></div></div>
+    <div class="cc"><div class="ct">Status</div><div class="cs">Convertido, pendente, cancelado</div><div class="leg" id="lg4"></div><div style="position:relative;width:100%;height:220px"><canvas id="c4" role="img" aria-label="Status"></canvas></div></div>
+    <div class="cc"><div class="ct">Modalidade</div><div class="cs">Tipo de reserva</div><div class="leg" id="lg5"></div><div style="position:relative;width:100%;height:220px"><canvas id="c5" role="img" aria-label="Modalidade"></canvas></div></div>
+  </div>
+</div>
+
+<!-- TABELA -->
+<div id="s-t" class="sec no-print">
+  <div class="fb">
+    <select id="fs" onchange="renderT()"><option value="">Todos os locais</option></select>
+    <select id="fst" onchange="renderT()"><option value="">Todos os status</option></select>
+    <select id="fm" onchange="renderT()"><option value="">Todos os meses</option></select>
+    <input type="text" id="fb2" placeholder="🔍 Buscar nome..." oninput="renderT()">
+  </div>
+  <div class="tw" id="tw"><div class="empty">Carregando...</div></div>
+</div>
+
+<!-- PLACAS -->
+<div id="s-p" class="sec no-print">
+  <div id="resultado-placas"></div>
+  <div class="placas-toolbar">
+    <input type="date" id="fd" onchange="renderP()">
+    <select id="fsp" onchange="renderP()"><option value="">Todos os locais</option></select>
+    <select id="fss" onchange="renderP()"><option value="">Todos os status</option></select>
+    <span style="font-size:13px;color:#888" id="pc"></span>
+    <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="pbtn" onclick="selecionarTodos()">☑ Sel. tudo</button>
+      <button class="pbtn" id="btn-imprimir" onclick="imprimirSelecionadas()" disabled>🖨 Imprimir</button>
+      <button class="pbtn primary" id="btn-gerar" onclick="gerarSelecionadas()" disabled>📄 Gerar no Drive</button>
+    </div>
+  </div>
+  <div class="pg" id="pg"><div class="empty">Selecione uma data para ver as placas.</div></div>
+</div>
+
+<!-- ÁREA DE IMPRESSÃO — só aparece no @media print -->
+<div id="area-impressao"></div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2 id="modal-titulo">Gerando placas...</h2>
+    <p id="modal-msg">Criando arquivos no Google Drive. Aguarde.</p>
+    <div class="spinner" id="modal-spinner"></div>
+    <div id="modal-links" class="links-list" style="text-align:left;display:none;max-height:200px;overflow-y:auto;margin-bottom:1rem"></div>
+    <button class="pbtn" id="modal-fechar" style="display:none;margin-top:.5rem" onclick="fecharModal()">Fechar</button>
+  </div>
+</div>
+
+<script>
+const CL=['#3b82f6','#10b981','#f97316','#e91e8c','#8b5cf6','#eab308','#06b6d4','#ef4444'];
+let ALL=[],charts={},placasVisiveis=[];
+
+function fetchDados(){
+  return new Promise((res,rej)=>{
+    google.script.run
+      .withSuccessHandler(s=>{try{res(JSON.parse(s));}catch(e){rej(e);}})
+      .withFailureHandler(e=>rej(new Error(e.message||String(e))))
+      .getDados();
+  });
+}
+
+function chamarGerarPlacas(reservas){
+  return new Promise((res,rej)=>{
+    google.script.run
+      .withSuccessHandler(s=>{try{res(JSON.parse(s));}catch(e){rej(e);}})
+      .withFailureHandler(e=>rej(new Error(e.message||String(e))))
+      .gerarPlacas(reservas);
+  });
+}
+
+function showTab(id,btn){
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('s-'+id).classList.add('on');
+  btn.classList.add('on');
+  if(id==='t') renderT();
+  if(id==='p') renderP();
+}
+
+function parseDate(v){
+  if(!v||v==='') return null;
+  const s=String(v).trim(),p=s.split(/[\/\-\.]/);
+  if(p.length===3){const[a,b,c]=p;if(String(c).length===4)return new Date(+c,+b-1,+a);if(String(a).length===4)return new Date(+a,+b-1,+c);}
+  const d=new Date(s);return isNaN(d)?null:d;
+}
+function fmt(d){return(!d||isNaN(d))?'—':d.toLocaleDateString('pt-BR');}
+function weekLabel(d){const s=new Date(d.getFullYear(),d.getMonth(),1),w=Math.ceil((d.getDate()+s.getDay())/7);return d.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'})+' S'+w;}
+function gv(r,tries){for(const t of tries){if(r[t]!==undefined&&r[t]!==null&&String(r[t]).trim()!=='')return r[t];}return '';}
+
+function process(rows){
+  if(!rows||!rows.length) return [];
+  const keys=Object.keys(rows[0]);
+  return rows.map(r=>({
+    nome:    String(gv(r,['Nome:','Nome','NOME','nome'])||'').trim(),
+    dataRaw: String(gv(r,['DATA','DATA DA RESERVA','Data','data'])||'').trim(),
+    dateObj: parseDate(gv(r,['DATA','DATA DA RESERVA','Data','data'])),
+    qtd:     parseInt(gv(r,['QTD','QTD DE PESSOAS','Qtd'])||1)||1,
+    local:   String(gv(r,['LOCAL','LOCAL OU SETOR','Local','local'])||'Geral').trim(),
+    obs:     String((()=>{const k=keys.find(x=>x.toLowerCase().includes('observa'));return k?r[k]:'';})()).trim(),
+    status:  String(gv(r,['STATUS','Status','status'])||'').trim(),
+    modal:   String(gv(r,['Modalidade','modalidade'])||'').trim(),
+  })).filter(r=>r.nome);
+}
+
+function metrics(data){
+  const hoje=new Date();hoje.setHours(0,0,0,0);
+  document.getElementById('m1').textContent=data.length;
+  document.getElementById('m2').textContent=data.reduce((s,r)=>s+r.qtd,0);
+  const hj=data.filter(r=>r.dateObj&&r.dateObj.toDateString()===hoje.toDateString());
+  document.getElementById('m3').textContent=hj.length;
+  document.getElementById('m3s').textContent=hj.reduce((s,r)=>s+r.qtd,0)+' pessoas';
+  const fut=data.filter(r=>r.dateObj&&r.dateObj>=hoje).sort((a,b)=>a.dateObj-b.dateObj);
+  document.getElementById('m4').textContent=fut.length?fmt(fut[0].dateObj)+' · '+fut[0].nome.split(' ')[0]:'—';
+  document.getElementById('m5').textContent=new Set(data.map(r=>r.local)).size;
+  const conv=data.filter(r=>r.status&&r.status.toLowerCase().includes('conver'));
+  document.getElementById('m6').textContent=conv.length;
+  document.getElementById('m6s').textContent=data.length?Math.round(conv.length/data.length*100)+'%':'';
+}
+
+function mkBar(id,labels,data,legId,label,color){
+  if(charts[id])charts[id].destroy();
+  const ctx=document.getElementById(id);if(!ctx)return;
+  charts[id]=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label,data,backgroundColor:color,borderRadius:6}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{y:{beginAtZero:true,ticks:{stepSize:1,font:{size:11}},grid:{color:'rgba(0,0,0,.05)'}},
+        x:{ticks:{font:{size:11},maxRotation:40,autoSkip:labels.length>14}}}}});
+  document.getElementById(legId).innerHTML=`<span><span class="ld" style="background:${color}"></span>${label}</span>`;
+}
+function mkDonut(id,labels,data,legId){
+  if(charts[id])charts[id].destroy();
+  const ctx=document.getElementById(id);if(!ctx)return;
+  const cols=CL.slice(0,labels.length);
+  charts[id]=new Chart(ctx,{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:cols,borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+  const total=data.reduce((a,b)=>a+b,0);
+  document.getElementById(legId).innerHTML=labels.map((l,i)=>`<span><span class="ld" style="background:${cols[i%cols.length]}"></span>${l} (${data[i]} · ${Math.round(data[i]/total*100)}%)</span>`).join('');
+}
+
+function buildCharts(data){
+  const byDate={},byLocal={},byWeek={},byStatus={},byModal={};
+  data.forEach(r=>{
+    if(r.dateObj&&!isNaN(r.dateObj)){const dk=fmt(r.dateObj);byDate[dk]=(byDate[dk]||0)+r.qtd;const wk=weekLabel(r.dateObj);byWeek[wk]=(byWeek[wk]||0)+r.qtd;}
+    byLocal[r.local]=(byLocal[r.local]||0)+1;
+    (byStatus[r.status||'Sem status']=(byStatus[r.status||'Sem status']||0)+1);
+    (byModal[r.modal||'Não informado']=(byModal[r.modal||'Não informado']||0)+1);
+  });
+  const dks=Object.keys(byDate).sort((a,b)=>parseDate(a)-parseDate(b));
+  mkBar('c1',dks,dks.map(k=>byDate[k]),'lg1','Pessoas','#3b82f6');
+  const lks=Object.keys(byLocal).sort((a,b)=>byLocal[b]-byLocal[a]);
+  mkDonut('c2',lks,lks.map(k=>byLocal[k]),'lg2');
+  mkBar('c3',Object.keys(byWeek),Object.values(byWeek),'lg3','Pessoas','#10b981');
+  const stks=Object.keys(byStatus).sort((a,b)=>byStatus[b]-byStatus[a]);
+  mkDonut('c4',stks,stks.map(k=>byStatus[k]),'lg4');
+  const mks=Object.keys(byModal).sort((a,b)=>byModal[b]-byModal[a]);
+  mkDonut('c5',mks,mks.map(k=>byModal[k]),'lg5');
+}
+
+function fillFilters(data){
+  const locais=[...new Set(data.map(r=>r.local))].sort();
+  const stats=[...new Set(data.map(r=>r.status).filter(Boolean))].sort();
+  const meses=[...new Set(data.filter(r=>r.dateObj&&!isNaN(r.dateObj)).map(r=>r.dateObj.toLocaleDateString('pt-BR',{month:'long',year:'numeric'})))].sort();
+  [['fs',locais,'Todos os locais'],['fsp',locais,'Todos os locais']].forEach(([id,opts,def])=>{
+    const s=document.getElementById(id),c=s.value;
+    s.innerHTML=`<option value="">${def}</option>`+opts.map(x=>`<option value="${x}">${x}</option>`).join('');if(c)s.value=c;});
+  [['fst',stats,'Todos os status'],['fss',stats,'Todos os status']].forEach(([id,opts,def])=>{
+    const s=document.getElementById(id),c=s.value;
+    s.innerHTML=`<option value="">${def}</option>`+opts.map(x=>`<option value="${x}">${x}</option>`).join('');if(c)s.value=c;});
+  const fm=document.getElementById('fm'),c=fm.value;
+  fm.innerHTML='<option value="">Todos os meses</option>'+meses.map(x=>`<option value="${x}">${x}</option>`).join('');if(c)fm.value=c;
+}
+
+const BC=['b0','b1','b2','b3','b4','b5'];let li={};
+function gb(l){if(li[l]===undefined)li[l]=Object.keys(li).length;return BC[li[l]%BC.length];}
+function sb(s){
+  if(!s)return'<span class="badge spend">—</span>';
+  const sl=s.toLowerCase();
+  if(sl.includes('conver'))return`<span class="badge sconv">${s}</span>`;
+  if(sl.includes('cancel'))return`<span class="badge scanc">${s}</span>`;
+  return`<span class="badge spend">${s}</span>`;
+}
+
+function renderT(){
+  const s=document.getElementById('fs').value,st=document.getElementById('fst').value,
+    m=document.getElementById('fm').value,b=document.getElementById('fb2').value.toLowerCase();
+  const data=ALL.filter(r=>(!s||r.local===s)&&(!st||r.status===st)&&(!b||r.nome.toLowerCase().includes(b))&&
+    (!m||(r.dateObj&&!isNaN(r.dateObj)&&r.dateObj.toLocaleDateString('pt-BR',{month:'long',year:'numeric'})===m))
+  ).sort((a,b)=>(a.dateObj||0)-(b.dateObj||0));
+  const tw=document.getElementById('tw');
+  if(!data.length){tw.innerHTML='<div class="empty">Nenhuma reserva encontrada.</div>';return;}
+  tw.innerHTML=`<table><thead><tr><th>Nome</th><th>Data</th><th>Pessoas</th><th>Local</th><th>Status</th><th>Modalidade</th></tr></thead><tbody>`+
+    data.map(r=>`<tr>
+      <td style="font-weight:700">${r.nome}</td>
+      <td style="white-space:nowrap">${r.dateObj&&!isNaN(r.dateObj)?fmt(r.dateObj):r.dataRaw||'—'}</td>
+      <td style="text-align:center">${r.qtd}</td>
+      <td><span class="badge ${gb(r.local)}">${r.local}</span></td>
+      <td>${sb(r.status)}</td>
+      <td style="font-size:12px">${r.modal||'—'}</td>
+    </tr>`).join('')+`</tbody></table>`;
+}
+
+function renderP(){
+  const df=document.getElementById('fd').value,sf=document.getElementById('fsp').value,ss=document.getElementById('fss').value;
+  placasVisiveis=ALL.filter(r=>(!sf||r.local===sf)&&(!ss||r.status===ss)&&
+    (!df||(r.dateObj&&!isNaN(r.dateObj)&&r.dateObj.toISOString().slice(0,10)===df))
+  ).sort((a,b)=>(a.dateObj||0)-(b.dateObj||0));
+  document.getElementById('pc').textContent=placasVisiveis.length?`${placasVisiveis.length} reserva${placasVisiveis.length!==1?'s':''}` :'';
+  document.getElementById('resultado-placas').innerHTML='';
+  const pg=document.getElementById('pg');
+  if(!placasVisiveis.length){pg.innerHTML='<div class="empty">Selecione uma data ou local.</div>';atualizarBtns();return;}
+  pg.innerHTML=placasVisiveis.map((r,i)=>`
+    <div class="placa sel" id="placa-${i}">
+      <input type="checkbox" id="chk-${i}" checked onchange="togglePlaca(${i})">
+      <div class="placa-top"><span>✅ Reserva confirmada</span>${sb(r.status)}</div>
+      <div class="placa-nome">${r.nome}</div>
+      <div class="placa-modal">${r.modal||''}</div>
+      <div class="pi">
+        <div class="pib"><div class="pil">Data</div><div class="piv">${r.dateObj&&!isNaN(r.dateObj)?fmt(r.dateObj):r.dataRaw||'—'}</div></div>
+        <div class="pib"><div class="pil">Pessoas</div><div class="piv">${r.qtd}</div></div>
+        <div class="pib" style="grid-column:1/-1"><div class="pil">Local / Setor</div><div class="piv" style="font-size:13px">${r.local}</div></div>
+      </div>
+    </div>`).join('');
+  atualizarBtns();
+}
+
+function togglePlaca(i){
+  const c=document.getElementById('chk-'+i);
+  document.getElementById('placa-'+i).classList.toggle('sel',c.checked);
+  atualizarBtns();
+}
+
+function getSel(){return placasVisiveis.filter((_,i)=>{const c=document.getElementById('chk-'+i);return c&&c.checked;});}
+
+function atualizarBtns(){
+  const n=getSel().length;
+  const bi=document.getElementById('btn-imprimir'),bg=document.getElementById('btn-gerar');
+  bi.disabled=bg.disabled=n===0;
+  bi.textContent=n>0?`🖨 Imprimir ${n} placa${n!==1?'s':''}`:'🖨 Imprimir';
+  bg.textContent=n>0?`📄 Gerar ${n} no Drive`:'📄 Gerar no Drive';
+}
+
+function selecionarTodos(){
+  const todos=document.querySelectorAll('[id^="chk-"]');
+  const marcar=[...todos].some(c=>!c.checked);
+  todos.forEach(c=>c.checked=marcar);
+  placasVisiveis.forEach((_,i)=>{const p=document.getElementById('placa-'+i);if(p)p.classList.toggle('sel',marcar);});
+  atualizarBtns();
+}
+
+function imprimirSelecionadas(){
+  const sel=getSel();
+  if(!sel.length) return;
+  // Monta folhas de impressão: uma por reserva, A4 paisagem
+  const area=document.getElementById('area-impressao');
+  area.innerHTML=sel.map(r=>`
+    <div class="folha-placa">
+      <div class="folha-header">
+        <!-- arte do cabeçalho vem do modelo .docx no Drive; aqui usamos texto como fallback para impressão via navegador -->
+        <div style="font-size:22pt;font-weight:900;letter-spacing:2px;border-bottom:3pt solid #000;padding-bottom:.3cm;margin-bottom:.3cm">GALPÃO 17 — RESERVA DE MESA</div>
+      </div>
+      <div class="folha-corpo">
+        <div class="print-nome">${r.nome}</div>
+        <div class="print-data">📅 ${r.dateObj&&!isNaN(r.dateObj)?fmt(r.dateObj):r.dataRaw||'—'}</div>
+        <div class="print-qtd">👥 ${r.qtd} pessoa${r.qtd!==1?'s':''}</div>
+        <div class="print-local">📍 ${r.local}</div>
+        <div class="print-aviso">FAVOR NÃO RETIRAR ESSA PLACA DA MESA</div>
+      </div>
+      <div class="folha-footer">WWW.GALPAO17DF.COM.BR &nbsp;&nbsp;&nbsp;&nbsp; @GALPAO17DF</div>
+    </div>`).join('');
+  window.print();
+}
+
+async function gerarSelecionadas(){
+  const sel=getSel();
+  if(!sel.length) return;
+  const reservas=sel.map(r=>({nome:r.nome,data:r.dateObj&&!isNaN(r.dateObj)?fmt(r.dateObj):r.dataRaw,qtd:r.qtd,local:r.local}));
+  abrirModal('Gerando placas...',`Criando ${reservas.length} arquivo${reservas.length!==1?'s':''} no Drive. Aguarde.`);
+  try{
+    const res=await chamarGerarPlacas(reservas);
+    if(!res.ok) throw new Error(res.erro);
+    document.getElementById('modal-spinner').style.display='none';
+    document.getElementById('modal-titulo').textContent='✅ Placas geradas!';
+    document.getElementById('modal-msg').textContent=`${res.links.length} arquivo${res.links.length!==1?'s':''} criado${res.links.length!==1?'s':''} no Drive, em pastas por data.`;
+    const ld=document.getElementById('modal-links');
+    ld.style.display='block';
+    ld.innerHTML=res.links.map(l=>`<a href="${l.link}" target="_blank">📄 ${l.nome} — ${l.data}</a>`).join('');
+    document.getElementById('modal-fechar').style.display='inline-flex';
+    document.getElementById('resultado-placas').innerHTML=
+      `<div class="ok-box">✅ <strong>${res.links.length} placa${res.links.length!==1?'s':''} gerada${res.links.length!==1?'s':''} no Drive!</strong>
+       <div class="links-list">${res.links.map(l=>`<a href="${l.link}" target="_blank">📄 ${l.nome} — ${l.data}</a>`).join('')}</div></div>`;
+  }catch(e){
+    document.getElementById('modal-spinner').style.display='none';
+    document.getElementById('modal-titulo').textContent='❌ Erro';
+    document.getElementById('modal-msg').textContent=e.message;
+    document.getElementById('modal-fechar').style.display='inline-flex';
+  }
+}
+
+function abrirModal(titulo,msg){
+  document.getElementById('modal-titulo').textContent=titulo;
+  document.getElementById('modal-msg').textContent=msg;
+  document.getElementById('modal-spinner').style.display='block';
+  document.getElementById('modal-links').style.display='none';
+  document.getElementById('modal-links').innerHTML='';
+  document.getElementById('modal-fechar').style.display='none';
+  document.getElementById('modal').classList.add('on');
+}
+function fecharModal(){document.getElementById('modal').classList.remove('on');}
+function setStatus(cls,txt){document.getElementById('pill').className='pill '+cls;document.getElementById('ptxt').textContent=txt;}
+
+async function loadDados(){
+  setStatus('load','Atualizando');
+  try{
+    const json=await fetchDados();
+    ALL=process(Array.isArray(json)?json:[json]);
+    if(!ALL.length) throw new Error('Nenhum dado encontrado');
+    metrics(ALL);buildCharts(ALL);fillFilters(ALL);
+    const at=document.querySelector('.tab.on');
+    if(at&&at.textContent.includes('Tabela'))renderT();
+    if(at&&at.textContent.includes('Placas'))renderP();
+    setStatus('ok','Ao vivo ✓');
+    document.getElementById('upd').textContent=`Atualizado às ${new Date().toLocaleTimeString('pt-BR')} · ${ALL.length} reservas`;
+    document.getElementById('err').innerHTML='';
+  }catch(e){
+    setStatus('err','Erro');
+    document.getElementById('err').innerHTML=`<div class="err-box">⚠️ <strong>Erro:</strong> ${e.message}</div>`;
+  }
+}
+
+loadDados();
+setInterval(loadDados,30000);
+</script>
+</body>
+</html>
